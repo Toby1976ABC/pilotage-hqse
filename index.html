@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pilotage HQSE</title>
+<meta name="theme-color" content="#1f3a2e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HQSE">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root {
+  /* Mise en page : une colonne mobile, barre d'onglets en bas, cartes par contrôle et par alerte */
+  --bg: #f4f6f3; --surface: #ffffff; --fg: #17211c; --muted: #5d6b63; --line: #dde3dd;
+  --accent: #1f3a2e; --accent-fg: #ffffff; --accent-soft: #e3ece6;
+  --bad: #b42318; --bad-soft: #fdecea; --warn: #b54708; --warn-soft: #fef0e1; --ok: #1d7a4a; --ok-soft: #e4f4ea; --info-soft: #eef0ee;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1512; --surface: #18201c; --fg: #e8eee9; --muted: #9aa8a0; --line: #2a352f;
+    --accent: #8fc7a5; --accent-fg: #0f1512; --accent-soft: #22312a;
+    --bad: #f97066; --bad-soft: #3a1c1a; --warn: #f7a14a; --warn-soft: #3a2a17; --ok: #6ccf98; --ok-soft: #173326; --info-soft: #222a26;
+    color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font); -webkit-tap-highlight-color: transparent; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.app { min-height: 100%; display: flex; flex-direction: column; }
+header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(env(safe-area-inset-top, 0px) + 14px) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+header.top h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -0.01em; flex: 1; }
+header.top .who { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.2; }
+main { flex: 1; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(96px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); max-width: 720px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+nav.tabs button { background: none; border: 0; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); border-radius: 10px; position: relative; }
+nav.tabs button svg { width: 22px; height: 22px; }
+nav.tabs button[aria-current="page"] { color: var(--accent); font-weight: 600; }
+nav.tabs .badge { position: absolute; top: 2px; left: calc(50% + 6px); background: var(--bad); color: #fff; font-size: 10px; min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 6px 2px 0; font-weight: 600; }
+.lead { font-size: 15px; margin: 0; }
+.lead b { font-variant-numeric: tabular-nums; }
+.feux { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 560px) { .feux { grid-template-columns: repeat(3, 1fr); } }
+.feu { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; border-left: 5px solid var(--line); }
+.feu.rouge { border-left-color: var(--bad); } .feu.orange { border-left-color: var(--warn); } .feu.vert { border-left-color: var(--ok); }
+.feu .nom { font-weight: 600; }
+.feu .nb { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.rouge { background: var(--bad-soft); color: var(--bad); } .pill.orange { background: var(--warn-soft); color: var(--warn); }
+.pill.info { background: var(--info-soft); color: var(--muted); } .pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.encours { background: var(--accent-soft); color: var(--accent); }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.item .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.item .title { font-weight: 600; }
+.item .detail { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.item .meta { color: var(--muted); font-size: 12px; }
+.item .actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; font-size: 14px; min-height: 40px; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .5; }
+.btn:focus-visible, nav.tabs button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.empty { color: var(--muted); text-align: center; padding: 28px 12px; }
+.err { color: var(--bad); font-size: 13px; }
+.login { max-width: 380px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: 14px; padding: 0 16px; }
+.login h1 { font-size: 24px; margin: 0; }
+.login p { color: var(--muted); margin: 0; }
+label.fld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+input[type=email], input[type=date], textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 12px; font-size: 16px; width: 100%; }
+textarea { min-height: 80px; resize: vertical; }
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; border-radius: 18px 18px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 12px; max-height: 88vh; overflow: auto; }
+.sheet h3 { margin: 0; font-size: 17px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 30; font-size: 14px; max-width: calc(100% - 32px); }
+.refresh { background: none; border: 0; padding: 6px; color: var(--muted); border-radius: 8px; cursor: pointer; }
+.refresh svg { width: 20px; height: 20px; }
+.skel { background: var(--info-soft); border-radius: var(--radius); height: 70px; }
+@media (prefers-reduced-motion: no-preference) { .skel { animation: pulse 1.2s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .5; } } }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <h1>Pilotage HQSE</h1>
+  <p>Cabane &amp; Cie. Connectez-vous avec votre adresse professionnelle : vous recevrez un lien par e-mail.</p>
+  <form id="login-form" novalidate>
+    <label class="fld" for="email">Adresse e-mail
+      <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="prenom.nom@cabaneetcie.fr">
+    </label>
+    <p id="login-err" class="err" hidden></p>
+    <button class="btn primary" id="login-btn" type="submit" style="width:100%;margin-top:12px">Recevoir le lien de connexion</button>
+  </form>
+  <p id="login-ok" hidden>Lien envoyé. Ouvrez l'e-mail sur ce téléphone et touchez le lien pour entrer.</p>
+</div>
+
+<div id="app" class="app" hidden>
+  <header class="top">
+    <h1 id="titre">Accueil</h1>
+    <div class="who"><div id="who-nom"></div><div id="who-role"></div></div>
+    <button class="refresh" id="btn-refresh" aria-label="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  </header>
+  <main id="view"></main>
+  <nav class="tabs" aria-label="Sections">
+    <button data-tab="accueil" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil</button>
+    <button data-tab="alertes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg>Alertes<span class="badge" id="badge-alertes" hidden></span></button>
+    <button data-tab="controles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 12l3 3 5-6"/></svg>Contrôles<span class="badge" id="badge-controles" hidden></span></button>
+    <button data-tab="echeances"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>Échéances</button>
+  </nav>
+</div>
+
+<script src="supabase-2.45.4.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
