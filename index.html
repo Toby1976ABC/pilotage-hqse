@@ -75,6 +75,7 @@ nav.tabs .badge { position: absolute; top: 2px; left: calc(50% + 6px); backgroun
 .login { max-width: 380px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: 14px; padding: 0 16px; }
 .login h1 { font-size: 24px; margin: 0; }
 .login p { color: var(--muted); margin: 0; }
+.login p.err { color: var(--bad); }
 label.fld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
 input[type=email], input[type=date], textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 12px; font-size: 16px; width: 100%; }
 textarea { min-height: 80px; resize: vertical; }
@@ -92,15 +93,23 @@ textarea { min-height: 80px; resize: vertical; }
 <body>
 <div id="login" class="login" hidden>
   <h1>Pilotage HQSE</h1>
-  <p>Cabane &amp; Cie. Connectez-vous avec votre adresse professionnelle : vous recevrez un lien par e-mail.</p>
+  <p>Cabane &amp; Cie. Connectez-vous avec votre adresse professionnelle : vous recevrez un code par e-mail.</p>
   <form id="login-form" novalidate>
     <label class="fld" for="email">Adresse e-mail
       <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="prenom.nom@cabaneetcie.fr">
     </label>
     <p id="login-err" class="err" hidden></p>
-    <button class="btn primary" id="login-btn" type="submit" style="width:100%;margin-top:12px">Recevoir le lien de connexion</button>
+    <button class="btn primary" id="login-btn" type="submit" style="width:100%;margin-top:12px">Recevoir le code</button>
   </form>
-  <p id="login-ok" hidden>Lien envoyé. Ouvrez l'e-mail sur ce téléphone et touchez le lien pour entrer.</p>
+  <form id="code-form" novalidate hidden>
+    <p id="code-info" style="margin-bottom:12px"></p>
+    <label class="fld" for="code">Code reçu par e-mail
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="letter-spacing:.3em;font-size:22px;text-align:center">
+    </label>
+    <p id="code-err" class="err" hidden></p>
+    <button class="btn primary" id="code-btn" type="submit" style="width:100%;margin-top:12px">Se connecter</button>
+    <button class="btn ghost" id="code-retour" type="button" style="width:100%;margin-top:8px">Changer d'adresse ou renvoyer un code</button>
+  </form>
 </div>
 
 <div id="app" class="app" hidden>

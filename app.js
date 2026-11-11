@@ -2,7 +2,7 @@
   'use strict';
   const cfg = window.HQSE_CONFIG;
   const sb = window.HQSE_API_MOCK ? null : window.supabase.createClient(cfg.url, cfg.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
   });
 
   const ROLES = { direction: 'Direction', qse: 'Technicien QSE', operationnel: 'Resp. opérationnel' };
@@ -19,6 +19,10 @@
     onAuth(fn) { sb.auth.onAuthStateChange((_e, s) => fn(s)); },
     async login(email) {
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+      if (error) throw error;
+    },
+    async verifier(email, code) {
+      const { error } = await sb.auth.verifyOtp({ email, token: code, type: 'email' });
       if (error) throw error;
     },
     async logout() { await sb.auth.signOut(); },
@@ -58,7 +62,8 @@
   const errMsg = (e) => {
     const m = (e && (e.message || e.error_description)) || String(e);
     if (/non autorisée|Database error saving new user|signups not allowed/i.test(m)) return "Cette adresse n'a pas accès à Pilotage HQSE. Demandez à la direction de l'ajouter.";
-    if (/rate limit/i.test(m)) return 'Trop de demandes. Réessayez dans une minute.';
+    if (/rate limit|429/i.test(m)) return "Trop d'e-mails envoyés récemment. Utilisez le dernier code reçu, ou réessayez dans une heure.";
+    if (/expired|invalid|otp/i.test(m)) return 'Code incorrect ou expiré. Vérifiez le dernier e-mail reçu, ou demandez un nouveau code.';
     return m;
   };
 
@@ -242,14 +247,31 @@
   $('#who-nom').parentElement.addEventListener('click', () => feuille('Mon compte', [el('p', { style: 'margin:0' }, st.moi ? st.moi.nom + ' — ' + (ROLES[st.moi.role] || '') : ''), el('p', { class: 'meta', style: 'margin:0;color:var(--muted)' }, st.moi ? st.moi.email : '')], 'Se déconnecter', { faire: () => api.logout(), succes: 'Déconnecté' }));
   document.addEventListener('visibilitychange', () => { if (!document.hidden && st.moi) rafraichir(true); });
 
+  let emailEnCours = '';
   $('#login-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const email = $('#email').value.trim().toLowerCase(); const err = $('#login-err'); err.hidden = true;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Saisissez une adresse e-mail valide.'; err.hidden = false; return; }
     const b = $('#login-btn'); b.disabled = true; b.textContent = 'Envoi…';
-    try { await api.login(email); $('#login-form').hidden = true; $('#login-ok').hidden = false; }
-    catch (e) { err.textContent = errMsg(e); err.hidden = false; b.disabled = false; b.textContent = 'Recevoir le lien de connexion'; }
+    try {
+      await api.login(email); emailEnCours = email;
+      $('#login-form').hidden = true; $('#code-form').hidden = false;
+      $('#code-info').textContent = 'Code envoyé à ' + email + '. Saisissez-le ci-dessous (ou touchez le lien de l\u2019e-mail sur cet appareil).';
+      $('#code').value = ''; $('#code').focus();
+    } catch (e) { err.textContent = errMsg(e); err.hidden = false; }
+    b.disabled = false; b.textContent = 'Recevoir le code';
   });
+  $('#code-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const code = $('#code').value.replace(/\s/g, ''); const err = $('#code-err'); err.hidden = true;
+    if (!/^\d{6,10}$/.test(code)) { err.textContent = 'Saisissez le code à chiffres reçu par e-mail.'; err.hidden = false; return; }
+    const b = $('#code-btn'); b.disabled = true; b.textContent = 'Vérification…';
+    try { await api.verifier(emailEnCours || $('#email').value.trim().toLowerCase(), code); }
+    catch (e) { err.textContent = errMsg(e); err.hidden = false; }
+    b.disabled = false; b.textContent = 'Se connecter';
+  });
+  $('#code').addEventListener('input', () => { $('#code-err').hidden = true; });
+  $('#code-retour').addEventListener('click', () => { $('#code-form').hidden = true; $('#login-form').hidden = false; $('#email').focus(); });
   $('#email').addEventListener('input', () => { $('#login-err').hidden = true; });
 
   const h = (location.hash || '').replace('#', ''); if (TITRES[h]) st.tab = h;
