@@ -76,7 +76,7 @@ nav.tabs .badge { position: absolute; top: 2px; left: calc(50% + 6px); backgroun
 .login h1 { font-size: 24px; margin: 0; }
 .login p { color: var(--muted); margin: 0; }
 label.fld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
-input[type=email], input[type=date], input.code, textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 12px; font-size: 16px; width: 100%; }
+input[type=email], input[type=date], textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 12px; font-size: 16px; width: 100%; }
 textarea { min-height: 80px; resize: vertical; }
 .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
 .sheet { background: var(--surface); width: 100%; max-width: 560px; border-radius: 18px 18px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 12px; max-height: 88vh; overflow: auto; }
@@ -86,31 +86,21 @@ textarea { min-height: 80px; resize: vertical; }
 .refresh svg { width: 20px; height: 20px; }
 .skel { background: var(--info-soft); border-radius: var(--radius); height: 70px; }
 @media (prefers-reduced-motion: no-preference) { .skel { animation: pulse 1.2s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .5; } } }
-input.code { font-size: 24px; letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; }
-.lien { background: none; border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; font-size: 14px; cursor: pointer; align-self: center; }
 [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <div id="login" class="login" hidden>
   <h1>Pilotage HQSE</h1>
-  <p>Cabane &amp; Cie. Connectez-vous avec votre adresse professionnelle : vous recevrez un code à 6 chiffres par e-mail.</p>
+  <p>Cabane &amp; Cie. Connectez-vous avec votre adresse professionnelle : vous recevrez un lien par e-mail.</p>
   <form id="login-form" novalidate>
     <label class="fld" for="email">Adresse e-mail
       <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="prenom.nom@cabaneetcie.fr">
     </label>
     <p id="login-err" class="err" hidden></p>
-    <button class="btn primary" id="login-btn" type="submit" style="width:100%;margin-top:12px">Recevoir le code</button>
+    <button class="btn primary" id="login-btn" type="submit" style="width:100%;margin-top:12px">Recevoir le lien de connexion</button>
   </form>
-  <form id="code-form" novalidate hidden>
-    <p id="code-info" style="margin-bottom:12px">Code envoyé. Saisissez le code à 6 chiffres reçu par e-mail (ou touchez le lien de l'e-mail sur ce téléphone).</p>
-    <label class="fld" for="code">Code reçu
-      <input id="code" class="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required placeholder="000000">
-    </label>
-    <p id="code-err" class="err" hidden></p>
-    <button class="btn primary" id="code-btn" type="submit" style="width:100%;margin-top:12px">Se connecter</button>
-    <button class="lien" id="code-retour" type="button" style="display:block;margin:10px auto 0">Changer d'adresse ou renvoyer un code</button>
-  </form>
+  <p id="login-ok" hidden>Lien envoyé. Ouvrez l'e-mail sur ce téléphone et touchez le lien pour entrer.</p>
 </div>
 
 <div id="app" class="app" hidden>
