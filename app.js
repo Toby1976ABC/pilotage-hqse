@@ -21,6 +21,10 @@
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
       if (error) throw error;
     },
+    async verifier(email, token) {
+      const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+      if (error) throw error;
+    },
     async logout() { await sb.auth.signOut(); },
     async moi() { const { data, error } = await sb.rpc('moi'); if (error) throw error; return data; },
     async charger() {
@@ -58,7 +62,8 @@
   const errMsg = (e) => {
     const m = (e && (e.message || e.error_description)) || String(e);
     if (/non autorisée|Database error saving new user|signups not allowed/i.test(m)) return "Cette adresse n'a pas accès à Pilotage HQSE. Demandez à la direction de l'ajouter.";
-    if (/rate limit/i.test(m)) return 'Trop de demandes. Réessayez dans une minute.';
+    if (/rate limit|security purposes/i.test(m)) return "Trop de demandes d'e-mail pour le moment. Réessayez dans une heure, ou utilisez le dernier code reçu.";
+    if (/expired|invalid|otp/i.test(m)) return 'Code incorrect ou expiré. Vérifiez le dernier e-mail reçu ou demandez un nouveau code.';
     return m;
   };
 
@@ -247,10 +252,30 @@
     const email = $('#email').value.trim().toLowerCase(); const err = $('#login-err'); err.hidden = true;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Saisissez une adresse e-mail valide.'; err.hidden = false; return; }
     const b = $('#login-btn'); b.disabled = true; b.textContent = 'Envoi…';
-    try { await api.login(email); $('#login-form').hidden = true; $('#login-ok').hidden = false; }
-    catch (e) { err.textContent = errMsg(e); err.hidden = false; b.disabled = false; b.textContent = 'Recevoir le lien de connexion'; }
+    try { await api.login(email); montrerCode(); }
+    catch (e) { err.textContent = errMsg(e); err.hidden = false; }
+    b.disabled = false; b.textContent = 'Recevoir le code';
   });
   $('#email').addEventListener('input', () => { $('#login-err').hidden = true; });
+  function montrerCode() {
+    $('#login-form').hidden = true; $('#code-form').hidden = false; $('#code-err').hidden = true;
+    $('#code').value = ''; $('#code').focus();
+  }
+  $('#code-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const email = $('#email').value.trim().toLowerCase();
+    const code = $('#code').value.replace(/\D/g, ''); const err = $('#code-err'); err.hidden = true;
+    if (code.length !== 6) { err.textContent = 'Le code contient 6 chiffres.'; err.hidden = false; return; }
+    const b = $('#code-btn'); b.disabled = true; b.textContent = 'Vérification…';
+    try { await api.verifier(email, code); }
+    catch (e) { err.textContent = errMsg(e); err.hidden = false; }
+    b.disabled = false; b.textContent = 'Se connecter';
+  });
+  $('#code').addEventListener('input', () => {
+    const c = $('#code'); c.value = c.value.replace(/\D/g, '').slice(0, 6); $('#code-err').hidden = true;
+    if (c.value.length === 6) $('#code-form').requestSubmit();
+  });
+  $('#code-retour').addEventListener('click', () => { $('#code-form').hidden = true; $('#login-form').hidden = false; $('#email').focus(); });
 
   const h = (location.hash || '').replace('#', ''); if (TITRES[h]) st.tab = h;
   api.onAuth((s) => entrer(s));
