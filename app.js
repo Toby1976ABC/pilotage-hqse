@@ -16,7 +16,8 @@
   // ---------- accès aux données ----------
   const api = window.HQSE_API_MOCK || {
     async session() { const { data } = await sb.auth.getSession(); return data.session; },
-    onAuth(fn) { sb.auth.onAuthStateChange((_e, s) => fn(s)); },
+    // Ne jamais appeler Supabase directement dans ce rappel (verrou d'auth → blocage) : on diffère.
+    onAuth(fn) { sb.auth.onAuthStateChange((_e, s) => { setTimeout(() => fn(s), 0); }); },
     async login(email) {
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
       if (error) throw error;
