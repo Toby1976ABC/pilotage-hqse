@@ -2,7 +2,9 @@
   'use strict';
   const cfg = window.HQSE_CONFIG;
   const sb = window.HQSE_API_MOCK ? null : window.supabase.createClient(cfg.url, cfg.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit',
+      // Verrou simple (pas navigator.locks) : le verrou inter-onglets de supabase-js restait bloqué et l'appli s'affichait vide.
+      lock: async (_nom, _delai, fn) => await fn() }
   });
 
   const ROLES = { direction: 'Direction', qse: 'Technicien QSE', operationnel: 'Resp. opérationnel' };
