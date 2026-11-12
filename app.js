@@ -10,13 +10,13 @@
   const GRAV = { rouge: 'Rouge', orange: 'Orange', info: 'Info' };
   const TITRES = { accueil: 'Accueil', alertes: 'Alertes', controles: 'Contrôles', echeances: 'Échéances' };
 
-  const st = { moi: null, tab: 'accueil', feux: [], alertes: [], controles: [], echeances: [], run: null,
+  const st = { moi: null, tab: 'accueil', feux: [], alertes: [], controles: [], echeances: [], run: null, fichiers: [], docsCtl: {},
     filtreRef: '', filtreGrav: '', filtreCtl: 'a_faire', loading: true, error: null };
 
   // ---------- accès aux données ----------
   const api = window.HQSE_API_MOCK || {
     async session() { const { data } = await sb.auth.getSession(); return data.session; },
-    onAuth(fn) { sb.auth.onAuthStateChange((_e, s) => setTimeout(() => fn(s), 0)); },
+    onAuth(fn) { sb.auth.onAuthStateChange((_e, s) => fn(s)); },
     async login(email) {
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
       if (error) throw error;
@@ -33,10 +33,13 @@
         sb.from('alertes').select('id,gravite,referentiel,bot,objet,detail,ref_document,echeance,statut,commentaire,pris_par,pris_le,created_at').eq('statut', 'ouverte'),
         sb.from('v_controles_a_faire').select('*'),
         sb.from('exigences').select('id,referentiel,intitule,document_code,derniere_realisation,prochaine_echeance').eq('actif', true).order('prochaine_echeance', { ascending: true, nullsFirst: true }),
-        sb.from('bot_runs').select('fin').not('fin', 'is', null).order('fin', { ascending: false }).limit(1)
+        sb.from('bot_runs').select('fin').not('fin', 'is', null).order('fin', { ascending: false }).limit(1),
+        sb.from('fichiers').select('code,chemin,version,date_modif').not('code', 'is', null),
+        sb.from('controles').select('id,documents_lies')
       ]);
       const e = q.find((r) => r.error); if (e) throw e.error;
-      return { feux: q[0].data, alertes: q[1].data, controles: q[2].data, echeances: q[3].data, run: q[4].data[0] || null };
+      const docsCtl = {}; for (const c of q[6].data) docsCtl[c.id] = c.documents_lies || [];
+      return { feux: q[0].data, alertes: q[1].data, controles: q[2].data, echeances: q[3].data, run: q[4].data[0] || null, fichiers: q[5].data, docsCtl };
     },
     async realisation(id, date, com) { const { error } = await sb.rpc('enregistrer_realisation', { p_controle_id: id, p_date: date, p_commentaire: com || null }); if (error) throw error; },
     async alerte(id, action, com) { const { error } = await sb.rpc('prendre_alerte', { p_id: id, p_action: action, p_commentaire: com || null }); if (error) throw error; }
@@ -66,6 +69,31 @@
     if (/expired|invalid|otp/i.test(m)) return 'Code incorrect ou expiré. Vérifiez le dernier e-mail reçu, ou demandez un nouveau code.';
     return m;
   };
+
+  // ---------- fichiers du Dossier qualité (SharePoint) ----------
+  const urlFichier = (chemin) => encodeURI(cfg.dossierQualite.replace(/\/$/, '')) + '/' + chemin.split('/').map(encodeURIComponent).join('/') + '?web=1';
+  const brouillon = (ch) => /(^|\/)(a|à) finaliser|(^|\/)archives?(\/|$)/i.test(ch);
+  function fichiersPour(codes) {
+    const vus = new Set();
+    return codes.filter(Boolean).flatMap((code) => st.fichiers.filter((f) => f.code === code))
+      .filter((f) => !vus.has(f.chemin) && vus.add(f.chemin))
+      .sort((a, b) => (codes.indexOf(a.code) - codes.indexOf(b.code)) || (brouillon(a.chemin) - brouillon(b.chemin)) || String(b.date_modif).localeCompare(String(a.date_modif)));
+  }
+  function blocFichiers(codes, titre) {
+    const liste = fichiersPour(codes);
+    const codesTxt = codes.filter(Boolean).join(', ');
+    if (!codesTxt) return null;
+    return el('div', { class: 'fichiers' },
+      el('div', { class: 'fichiers-t' }, titre || 'Fichier concerné'),
+      liste.length ? liste.map((f) => {
+        const parts = f.chemin.split('/'); const nom = parts.pop();
+        return el('a', { class: 'fichier', href: urlFichier(f.chemin), target: '_blank', rel: 'noopener' },
+          el('span', { class: 'fichier-nom' }, nom),
+          el('span', { class: 'fichier-meta' }, (parts.join(' › ') || 'Dossier qualité') + ' · modifié le ' + fmtDate(f.date_modif) + (brouillon(f.chemin) ? ' · brouillon/archive' : '')),
+          el('span', { class: 'fichier-go', 'aria-hidden': 'true' }, 'Ouvrir ›'));
+      }) : el('div', { class: 'fichier-meta' }, 'Aucun fichier ' + codesTxt + ' trouvé dans le Dossier qualité (relevé quotidien).'),
+      liste.length ? el('div', { class: 'fichier-meta' }, 'S’ouvre dans Excel ou Word (SharePoint) : vos modifications sont enregistrées directement dans le fichier. Revenez ensuite ici pour valider.') : null);
+  }
 
   // ---------- chargement ----------
   async function rafraichir(silencieux) {
@@ -163,7 +191,8 @@
           el('div', { class: 'row' }, el('span', { class: 'pill ' + (j == null ? 'info' : j < 0 ? 'rouge' : j <= 30 ? 'orange' : 'ok') }, j == null ? 'Inconnue' : j < 0 ? 'Dépassée de ' + plural(-j, 'jour') : 'Dans ' + plural(j, 'jour')),
             el('span', { class: 'pill info' }, REFS[e.referentiel] || e.referentiel)),
           el('div', { class: 'title' }, e.intitule),
-          el('div', { class: 'meta' }, e.document_code + ' · mis à jour le ' + fmtDate(e.derniere_realisation) + ' · échéance ' + fmtDate(e.prochaine_echeance)));
+          el('div', { class: 'meta' }, e.document_code + ' · mis à jour le ' + fmtDate(e.derniere_realisation) + ' · échéance ' + fmtDate(e.prochaine_echeance)),
+          fichiersPour([e.document_code]).length ? el('div', { class: 'actions' }, el('button', { class: 'btn', onclick: () => feuilleFichier(e.intitule, [e.document_code]) }, 'Voir le fichier')) : null);
       }))
     ];
   }
@@ -191,7 +220,8 @@
   function feuilleControle(c) {
     const d = el('input', { type: 'date', id: 'f-date', value: today(), max: today(), required: true });
     const com = el('textarea', { id: 'f-com', placeholder: 'Facultatif : résultat, écart constaté, n° de rapport…' });
-    feuille(c.intitule, [el('label', { class: 'fld', for: 'f-date' }, 'Date de réalisation', d), el('label', { class: 'fld', for: 'f-com' }, 'Commentaire', com)], 'Enregistrer', {
+    const codes = [...(st.docsCtl[c.id] || []), 'LIS-CONT-01'];
+    feuille(c.intitule, [blocFichiers(codes, 'Fichiers d’enregistrement'), el('label', { class: 'fld', for: 'f-date' }, 'Date de réalisation', d), el('label', { class: 'fld', for: 'f-com' }, 'Commentaire', com)], 'Enregistrer', {
       valider: () => !d.value ? 'Indiquez la date de réalisation.' : d.value > today() ? 'La date ne peut pas être dans le futur.' : null,
       faire: () => api.realisation(c.id, d.value, com.value.trim()),
       succes: 'Contrôle enregistré'
@@ -202,11 +232,19 @@
     const com = el('textarea', { id: 'f-com-a', placeholder: action === 'ignorer' ? 'Pourquoi cette alerte ne s’applique pas' : 'Ce que vous allez faire, et quand' });
     const titres = { prendre: 'Prendre en charge', ignorer: 'Ignorer cette alerte', rouvrir: 'Remettre en ouvert' };
     const succes = { prendre: 'Alerte prise en charge', ignorer: 'Alerte ignorée', rouvrir: 'Alerte remise en ouvert' };
-    feuille(titres[action], [el('p', { class: 'detail', style: 'margin:0' }, a.objet), action === 'rouvrir' ? null : el('label', { class: 'fld', for: 'f-com-a' }, 'Commentaire', com)], titres[action], {
+    feuille(titres[action], [el('p', { class: 'detail', style: 'margin:0' }, a.objet), blocFichiers([a.ref_document]), action === 'rouvrir' ? null : el('label', { class: 'fld', for: 'f-com-a' }, 'Commentaire', com)], titres[action], {
       valider: () => action === 'ignorer' && !com.value.trim() ? 'Expliquez pourquoi vous ignorez cette alerte.' : null,
       faire: () => api.alerte(a.id, action, com.value.trim()),
       succes: succes[action]
     });
+  }
+
+  function feuilleFichier(titre, codes) {
+    const bg = el('div', { class: 'sheet-bg', onclick: (e) => { if (e.target === bg) bg.remove(); } },
+      el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': titre },
+        el('h3', {}, titre), blocFichiers(codes),
+        el('div', { style: 'display:flex;justify-content:flex-end' }, el('button', { class: 'btn ghost', type: 'button', onclick: () => bg.remove() }, 'Fermer'))));
+    document.body.append(bg);
   }
 
   // ---------- rendu ----------
